@@ -9,6 +9,8 @@ import Login from './Components/Login/Login';
 
 
 function App() {
+  const [{ user }, dispatch] = useStateValue();
+  
   return (
     <div className="app">
        { !user ? (
