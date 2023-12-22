@@ -6,32 +6,57 @@ import MoreVertIcon from "@material-ui/icons/MoreVert";
 import SidebarChat from "../SidebarChat/SidebarChat";
 import "./Sidebar.css";
 import db from "../../firebase";
-import React, { useEffect, useState, useContext } from 'react';
-import { AuthContext} from '../../context/auth-context';
+import React, { useEffect, useState, useContext, useRef } from "react";
+import { AuthContext } from "../../context/auth-context";
 
 function Sidebar() {
   const authContext = useContext(AuthContext);
   const [rooms, setRooms] = useState([]);
+  const [enteredFilter, setEnteredFilter] = useState("");
+  const [filteredRooms, setFilteredRooms] = useState([]);
+
+  const inputRef = useRef();
 
   useEffect(() => {
-      const unsubscribe = db.collection("rooms").onSnapshot((snapshot) => {
-        setRooms(
-          snapshot.docs.map((doc) => ({
-            id: doc.id,
-            data: doc.data(),
-          }))
-        );
-      });
+    const unsubscribe = db.collection("rooms").onSnapshot((snapshot) => {
+      setRooms(
+        snapshot.docs.map((doc) => ({
+          id: doc.id,
+          data: doc.data(),
+        }))
+      );
+    });
 
     return () => {
       unsubscribe();
     };
   }, []);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (enteredFilter === inputRef.current.value) {
+        db.collection("rooms")
+          .where("name", "==", enteredFilter)
+          .onSnapshot((snapshot) => {
+            setFilteredRooms(
+              snapshot.docs.map((doc) => ({
+                id: doc.id,
+                data: doc.data(),
+              }))
+            );
+          });
+      }
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [enteredFilter, inputRef]);
+
   return (
     <div className="sidebar">
       <div className="sidebar__header">
-      <Avatar src={authContext.user && authContext.user.photoURL}/>
+        <Avatar src={authContext.user && authContext.user.photoURL} />
         <div className="sidebar__headerRight">
           <IconButton>
             <DonutLargeIcon />
@@ -47,13 +72,23 @@ function Sidebar() {
       <div className="sidebar__search">
         <div className="sidebar__searchContainer">
           <SearchOutlined />
-          <input placeholder="search chat room" type="text" />
+          <input
+            ref={inputRef}
+            placeholder="search chat room"
+            type="text"
+            value={enteredFilter}
+            onChange={(event) => setEnteredFilter(event.target.value)}
+          />
         </div>
       </div>
       <div className="sidebar__chats">
-        {rooms.map((room) => (
-          <SidebarChat key={room.id} id={room.id} name={room.data.name} />
-        ))}
+        {!enteredFilter
+          ? rooms.map((room) => (
+              <SidebarChat key={room.id} id={room.id} name={room.data.name} />
+            ))
+          : filteredRooms.map((room) => (
+              <SidebarChat key={room.id} id={room.id} name={room.data.name} />
+            ))}
       </div>
     </div>
   );
