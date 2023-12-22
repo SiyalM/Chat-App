@@ -13,13 +13,16 @@ import "./Chat.css";
 import db from "../../firebase";
 import firebase from "firebase";
 import { AuthContext } from "../../context/auth-context";
+import { storage } from "../../firebase";
 
 function Chat() {
   const [input, setInput] = useState("");
   const [seed, setSeed] = useState("");
   const { roomId } = useParams();
-
   const [roomName, setRoomName] = useState("");
+  const [file, setFile] = useState(null);
+  const [progress, setProgress] = useState(null);
+
   const [messages, setMessages] = useState([]);
   const authContext = useContext(AuthContext);
 
@@ -42,6 +45,32 @@ function Chat() {
   }, [roomId]);
 
   useEffect(() => {
+    if (file) {
+      const storageRef = storage.ref(file.name);
+
+      storageRef.put(file).on(
+        "state_changed",
+        (snap) => {
+          let progress = snap.bytesTransferred / snap.totalBytes / 100;
+          setProgress(progress);
+        },
+        (error) => {
+          alert(error.message);
+        },
+        async () => {
+          const url = await storageRef.getDownloadURL();
+          const name = authContext.user.displayName;
+          const timestamp = firebase.firestore.FieldValue.serverTimestamp();
+          db.collection("rooms")
+            .doc(roomId)
+            .collection("messages")
+            .add({ name, timestamp, url });
+        }
+      );
+    }
+  }, [file, authContext.user, roomId]);
+
+  useEffect(() => {
     setSeed(Math.floor(Math.random() * 5000));
   }, []);
 
@@ -56,6 +85,20 @@ function Chat() {
     });
     setInput("");
   };
+
+  const types = ["image/jpeg", "image/png"];
+
+  const imageUploadHandler = (event) => {
+    const selected = event.target.files[0];
+
+    if (selected && types.includes(selected.type)) {
+      setFile(selected);
+    } else {
+      setFile(null);
+      alert("please select file of type jpeg/png");
+    }
+  };
+
   return (
     <div className="chat">
       <div className="chat__header">
@@ -73,9 +116,7 @@ function Chat() {
           <IconButton>
             <SearchOutlined />
           </IconButton>
-          <IconButton>
-            <AttachFile />
-          </IconButton>
+
           <IconButton>
             <MoreVert />
           </IconButton>
@@ -88,23 +129,47 @@ function Chat() {
           hey guys
           <span className="chat__timestamp">6:23</span>
         </p>
-        {messages.map((message) => (
-          <p
-            className={`chat_message ${
-              message.name === authContext.user.displayName && "chat__receiver"
-            }`}
-          >
-            <span className="chat__username">{message.name}</span>
-            {message.message}
-            <span className="chat__timestamp">
-              {new Date(message.timestamp?.toDate()).toUTCString()}
-            </span>
-          </p>
-        ))}
+        {messages.map((message) =>
+          !message.url ? (
+            <p
+              className={`chat_message ${
+                message.name === authContext.user.displayName &&
+                "chat__receiver"
+              }`}
+            >
+              <span className="chat__username">{message.name}</span>
+              {message.message}
+              <span className="chat__timestamp">
+                {new Date(message.timestamp?.toDate()).toUTCString()}
+              </span>
+            </p>
+          ) : (
+            <div
+              className={`chat_Img ${
+                message.name === authContext.user.displayName &&
+                "chat__receiverImg"
+              }`}
+            >
+              <span className="chat__usernameImg">{message.name}</span>
+              <img className="chat__image" src={message.url}></img>
+              <p className="chat__timestampImg">
+                {new Date(message.timestamp?.toDate()).toUTCString()}
+              </p>
+            </div>
+          )
+        )}
       </div>
 
       <div className="chat__footer">
-        <InsertEmoticon />
+        <IconButton>
+          <InsertEmoticon />
+        </IconButton>
+        <label>
+          <input type="file" onChange={imageUploadHandler} />
+          <span>
+            <AttachFile />
+          </span>
+        </label>
         <form>
           <input
             type="text"
@@ -116,7 +181,6 @@ function Chat() {
             <DoubleArrow />
           </IconButton>
         </form>
-        <Mic />
       </div>
     </div>
   );
