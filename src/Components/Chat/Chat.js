@@ -7,12 +7,12 @@ import {
   MoreVert,
   SearchOutlined,
 } from "@material-ui/icons";
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import "./Chat.css";
 import db from "../../firebase";
-import { useStateValue } from "../../StateProvider";
 import firebase from "firebase";
+import { AuthContext } from "../../context/auth-context";
 
 function Chat() {
   const [input, setInput] = useState("");
@@ -21,7 +21,7 @@ function Chat() {
 
   const [roomName, setRoomName] = useState("");
   const [messages, setMessages] = useState([]);
-  const [{ user }, dispatch] = useStateValue();
+  const authContext = useContext(AuthContext);
 
   useEffect(() => {
     if (roomId) {
@@ -50,7 +50,7 @@ function Chat() {
 
     // add message to db
     db.collection("rooms").doc(roomId).collection("messages").add({
-      name: user.displayName,
+      name: authContext.user.displayName,
       message: input,
       timestamp: firebase.firestore.FieldValue.serverTimestamp(),
     });
@@ -62,7 +62,12 @@ function Chat() {
         <Avatar src={`https://avatars.dicebear.com/api/human/${seed}.svg`} />
         <div className="chat__headerInfo">
           <h3>{roomName}</h3>
-          <p>last seen {new Date(messages[messages.length - 1]?.timestamp?.toDate()).toUTCString()}</p>
+          <p>
+            last seen{" "}
+            {new Date(
+              messages[messages.length - 1]?.timestamp?.toDate()
+            ).toUTCString()}
+          </p>
         </div>
         <div className="chat__headerRight">
           <IconButton>
@@ -86,7 +91,7 @@ function Chat() {
         {messages.map((message) => (
           <p
             className={`chat_message ${
-              message.name === user.displayName && "chat__receiver"
+              message.name === authContext.user.displayName && "chat__receiver"
             }`}
           >
             <span className="chat__username">{message.name}</span>

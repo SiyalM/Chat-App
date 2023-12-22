@@ -6,11 +6,11 @@ import MoreVertIcon from "@material-ui/icons/MoreVert";
 import SidebarChat from "../SidebarChat/SidebarChat";
 import "./Sidebar.css";
 import db from "../../firebase";
-import React, { useEffect, useState } from "react";
-import { useStateValue } from '../../StateProvider';
+import React, { useEffect, useState, useContext } from 'react';
+import { AuthContext} from '../../context/auth-context';
 
 function Sidebar() {
-  const [{ user }, dispatch] = useStateValue();
+  const authContext = useContext(AuthContext);
   const [rooms, setRooms] = useState([]);
 
   useEffect(() => {
@@ -31,7 +31,7 @@ function Sidebar() {
   return (
     <div className="sidebar">
       <div className="sidebar__header">
-      <Avatar src={user && user.photoURL}/>
+      <Avatar src={authContext.user && authContext.user.photoURL}/>
         <div className="sidebar__headerRight">
           <IconButton>
             <DonutLargeIcon />
